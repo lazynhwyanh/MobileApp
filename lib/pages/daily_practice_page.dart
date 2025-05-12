@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../data/dictionary_db.dart';
+import './inline_popup_text.dart';
 
 class DailyPracticePage extends StatefulWidget {
   final int lessonIndex;
@@ -50,7 +52,6 @@ class _DailyPracticePageState extends State<DailyPracticePage> {
                       correctAnswer.replaceAll(RegExp(r'[^\d]'), ''),
                     ) ??
                     -1;
-
                 final isCorrect =
                     selected != null && selected == correctIndex - 1;
 
@@ -65,33 +66,55 @@ class _DailyPracticePageState extends State<DailyPracticePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          questionText,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        InlinePopupSelectableText(text: questionText),
                         const SizedBox(height: 10),
-                        for (int i = 0; i < options.length; i++)
-                          RadioListTile<int>(
-                            value: i,
-                            groupValue: selected,
-                            title: Text(options[i]),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedAnswers[globalIndex] = value!;
-                              });
-                            },
-                          ),
+                        Column(
+                          children: List.generate(options.length, (i) {
+                            return RadioListTile<int>(
+                              value: i,
+                              groupValue: selected,
+                              title: Builder(
+                                builder: (context) {
+                                  return InlinePopupSelectableText(
+                                    text: options[i],
+                                  );
+                                },
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedAnswers[globalIndex] = value!;
+                                });
+                              },
+                            );
+                          }),
+                        ),
                         if (selected != null)
-                          Text(
-                            isCorrect
-                                ? '✅ Đúng!'
-                                : '❌ Sai. Đáp án đúng: $correctAnswer',
-                            style: TextStyle(
-                              color: isCorrect ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.bold,
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  color: isCorrect ? Colors.green : Colors.red,
+                                  fontSize: 16,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: isCorrect ? '✅ Đúng!' : '❌ Sai. ',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (!isCorrect) ...[
+                                    const TextSpan(text: 'Đáp án đúng: '),
+                                    TextSpan(
+                                      text: correctAnswer,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                       ],

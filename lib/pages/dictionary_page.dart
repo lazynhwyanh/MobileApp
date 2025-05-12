@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../data/dictionary_db.dart';
+import '../data/flashcard_db.dart';
+import 'package:translator/translator.dart';
 
 class DictionaryPage extends StatefulWidget {
   const DictionaryPage({super.key});
@@ -22,14 +24,40 @@ class _DictionaryPageState extends State<DictionaryPage> {
     setState(() {
       loading = true;
       meaning = null;
+      isSaved = false;
     });
 
     final result = await searchWord(input.trim());
 
-    setState(() {
-      loading = false;
-      meaning = result;
-    });
+    if (result != null) {
+      final alreadySaved = await isWordInFlashcard(input.trim());
+      setState(() {
+        loading = false;
+        meaning = result;
+        isSaved = alreadySaved;
+      });
+    } else {
+      final fallbackMeaning = await _translateWithGoogle(input.trim());
+
+      setState(() {
+        loading = false;
+        meaning = {
+          'base': input.trim(),
+          'mean': [fallbackMeaning],
+          'phonetic': '',
+          'opposite': '',
+          'synsets': '',
+          'related': '',
+        };
+        isSaved = false;
+      });
+    }
+  }
+
+  Future<String> _translateWithGoogle(String text) async {
+    final translator = GoogleTranslator();
+    final translation = await translator.translate(text, from: 'ja', to: 'vi');
+    return translation.text;
   }
 
   String _parseField(dynamic content) {
@@ -112,9 +140,9 @@ class _DictionaryPageState extends State<DictionaryPage> {
     return [];
   }
 
-  void _saveToFlashcard(Map<String, dynamic> wordData) {
+  void _saveToFlashcard(Map<String, dynamic> wordData) async {
+    await saveFlashcard(wordData);
     print('Đã lưu từ: ${wordData['base']}');
-    // TODO: Sau này lưu vào local storage (Hive, SharedPreferences...)
   }
 
   // 3. UI helpers
@@ -277,16 +305,22 @@ class _DictionaryPageState extends State<DictionaryPage> {
                       ) // vàng olive nổi bật
                       : Colors.grey,
             ),
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 isSaved = !isSaved;
-                if (isSaved) {
-                  _saveToFlashcard(data); // bạn có thể viết hàm lưu sau
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã lưu vào flashcard')),
-                  );
-                }
               });
+
+              if (isSaved) {
+                await saveFlashcard(data);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ Đã lưu vào flashcard')),
+                );
+              } else {
+                await deleteFlashcard(data['base']);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🗑️ Đã xóa khỏi flashcard')),
+                );
+              }
             },
           ),
         ),
